@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.1.2
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 16 Jun 2014 20:44:18 GMT
+ * CanJS - 2.2.4
+ * http://canjs.com/
+ * Copyright (c) 2015 Bitovi
+ * Fri, 03 Apr 2015 23:27:46 GMT
  * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
  */
-define(["can/util/jquery"], function (can) {
-	return can;
+
+/*can@2.2.4#util/library*/
+define(['can/util/jquery'], function (can) {
+    return can;
 });

@@ -1,22 +1,27 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#map/define/define*/
+/*can@2.2.9#map/define/define*/
 define([
     'can/util/library',
     'can/observe'
 ], function (can) {
     var define = can.define = {};
-    var getPropDefineBehavior = function (behavior, prop, define) {
-        var propBehavior;
+    var getPropDefineBehavior = function (behavior, attr, define) {
+        var prop, defaultProp;
         if (define) {
-            propBehavior = define[prop] ? define[prop] : define['*'];
-            return propBehavior && propBehavior[behavior];
+            prop = define[attr];
+            defaultProp = define['*'];
+            if (prop && prop[behavior] !== undefined) {
+                return prop[behavior];
+            } else if (defaultProp && defaultProp[behavior] !== undefined) {
+                return defaultProp[behavior];
+            }
         }
     };
     can.Map.helpers.define = function (Map) {
@@ -50,7 +55,7 @@ define([
     can.Map.prototype._setupDefaults = function (obj) {
         var defaults = oldSetupDefaults.call(this), propsCommittedToAttr = {}, Map = this.constructor, originalGet = this._get;
         this._get = function (originalProp) {
-            prop = originalProp.indexOf('.') !== -1 ? originalProp.substr(0, originalProp.indexOf('.')) : prop;
+            var prop = originalProp.indexOf('.') !== -1 ? originalProp.substr(0, originalProp.indexOf('.')) : originalProp;
             if (prop in defaults && !(prop in propsCommittedToAttr)) {
                 this.attr(prop, defaults[prop]);
                 propsCommittedToAttr[prop] = true;
@@ -88,12 +93,12 @@ define([
                     setterCalled = true;
                 }, errorCallback, getter ? this[prop].computeInstance.lastSetValue.get() : current);
             if (getter) {
-                if (setValue !== undefined && !setterCalled && setter.length >= 2) {
+                if (setValue !== undefined && !setterCalled && setter.length >= 1) {
                     this[prop](setValue);
                 }
                 can.batch.stop();
                 return;
-            } else if (setValue === undefined && !setterCalled && setter.length >= 2) {
+            } else if (setValue === undefined && !setterCalled && setter.length >= 1) {
                 can.batch.stop();
                 return;
             } else {
@@ -121,6 +126,9 @@ define([
             }
         },
         'number': function (val) {
+            if (val == null) {
+                return val;
+            }
             return +val;
         },
         'boolean': function (val) {
@@ -136,6 +144,9 @@ define([
             return val;
         },
         'string': function (val) {
+            if (val == null) {
+                return val;
+            }
             return '' + val;
         },
         'compute': {

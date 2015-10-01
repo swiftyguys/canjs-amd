@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#map/lazy/lazy*/
+/*can@2.2.9#map/lazy/lazy*/
 define([
     'can/util/library',
     'can/map/bubble',
@@ -116,6 +116,7 @@ define([
             };
         },
         _get: function (attr) {
+            can.__observe(this, attr);
             var data = this._goto(attr);
             if (can.Map.helpers.isObservable(data.value)) {
                 if (data.parts.length) {
@@ -142,7 +143,7 @@ define([
             } else if (!data.parts.length) {
                 this.__set(attr, value, data.value, data);
             } else {
-                throw 'can.LazyMap: object does not exist';
+                throw new Error('can.LazyMap: object does not exist');
             }
         },
         __set: function (prop, value, current, data, convert) {

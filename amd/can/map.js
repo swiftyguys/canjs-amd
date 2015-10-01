@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#map/map*/
+/*can@2.2.9#map/map*/
 define([
     'can/util/library',
     'can/util/bind',
@@ -116,7 +116,7 @@ define([
                             where[name] = result;
                         }
                     });
-                    can.__reading(map, '__keys');
+                    can.__observe(map, '__keys');
                     if (firstSerialize) {
                         serializeMap = null;
                     }
@@ -135,7 +135,7 @@ define([
             },
             keys: function (map) {
                 var keys = [];
-                can.__reading(map, '__keys');
+                can.__observe(map, '__keys');
                 for (var keyName in map._data) {
                     keys.push(keyName);
                 }
@@ -223,7 +223,6 @@ define([
                 if (type !== 'string' && type !== 'number') {
                     return this._attrs(attr, val);
                 } else if (arguments.length === 1) {
-                    can.__reading(this, attr);
                     return this._get(attr);
                 } else {
                     this._set(attr, val);
@@ -262,9 +261,12 @@ define([
                     if (value !== undefined) {
                         return value;
                     }
-                    var first = attr.substr(0, dotIndex), second = attr.substr(dotIndex + 1), current = this.__get(first);
+                    var first = attr.substr(0, dotIndex), second = attr.substr(dotIndex + 1);
+                    can.__observe(this, first);
+                    var current = this.__get(first);
                     return current && current._get ? current._get(second) : undefined;
                 } else {
+                    can.__observe(this, attr);
                     return this.__get(attr);
                 }
             },
@@ -304,7 +306,7 @@ define([
                     if (Map.helpers.isObservable(current)) {
                         current._set(second, value);
                     } else {
-                        throw 'can.Map: Object does not exist';
+                        throw new Error('can.Map: Object does not exist');
                     }
                 } else {
                     if (this.__convert) {

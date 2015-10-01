@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#view/bindings/bindings*/
+/*can@2.2.9#view/bindings/bindings*/
 define([
     'can/util/library',
     'can/view/mustache_core',
@@ -147,6 +147,13 @@ define([
             event = specialData.event;
         }
         can.bind.call(el, event, handler);
+        var attributesHandler = function (ev) {
+            if (ev.attributeName === attributeName && !this.getAttribute(attributeName)) {
+                can.unbind.call(el, event, handler);
+                can.unbind.call(el, 'attributes', attributesHandler);
+            }
+        };
+        can.bind.call(el, 'attributes', attributesHandler);
     });
     var Value = can.Control.extend({
             init: function () {
@@ -162,7 +169,12 @@ define([
                     return;
                 }
                 var val = this.options.value();
-                this.element[0].value = val == null ? '' : val;
+                if (val == null && this.element[0].nodeName.toUpperCase() !== 'SELECT') {
+                    val = '';
+                }
+                if (val != null) {
+                    this.element[0].value = val;
+                }
             },
             'change': function () {
                 if (!this.element) {

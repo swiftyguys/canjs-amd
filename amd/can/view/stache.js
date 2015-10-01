@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#view/stache/stache*/
+/*can@2.2.9#view/stache/stache*/
 define([
     'can/util/library',
     'can/view/parser',
@@ -60,10 +60,11 @@ define([
                     }
                 }
             }, copyState = function (overwrites) {
+                var lastElement = state.sectionElementStack[state.sectionElementStack.length - 1];
                 var cur = {
                         tag: state.node && state.node.tag,
                         attr: state.attr && state.attr.name,
-                        directlyNested: state.sectionElementStack.length ? state.sectionElementStack[state.sectionElementStack.length - 1] === 'section' : true
+                        directlyNested: state.sectionElementStack.length ? lastElement === 'section' || lastElement === 'custom' : true
                     };
                 return overwrites ? can.simpleExtend(cur, overwrites) : cur;
             }, addAttributesCallback = function (node, callback) {
@@ -89,18 +90,19 @@ define([
                 if (unary) {
                     section.add(state.node);
                     if (isCustomTag) {
-                        addAttributesCallback(state.node, function (scope, options) {
+                        addAttributesCallback(state.node, function (scope, options, parentNodeList) {
                             viewCallbacks.tagHandler(this, tagName, {
                                 scope: scope,
                                 options: options,
                                 subtemplate: null,
-                                templateType: 'stache'
+                                templateType: 'stache',
+                                parentNodeList: parentNodeList
                             });
                         });
                     }
                 } else {
                     section.push(state.node);
-                    state.sectionElementStack.push('element');
+                    state.sectionElementStack.push(isCustomTag ? 'custom' : 'element');
                     if (isCustomTag) {
                         section.startSubSection();
                     }
@@ -118,12 +120,13 @@ define([
                 }
                 var oldNode = section.pop();
                 if (isCustomTag) {
-                    addAttributesCallback(oldNode, function (scope, options) {
+                    addAttributesCallback(oldNode, function (scope, options, parentNodeList) {
                         viewCallbacks.tagHandler(this, tagName, {
                             scope: scope,
                             options: options,
                             subtemplate: renderer,
-                            templateType: 'stache'
+                            templateType: 'stache',
+                            parentNodeList: parentNodeList
                         });
                     });
                 }
@@ -209,7 +212,7 @@ define([
                         }
                         makeRendererAndUpdateSection(state.node.section, mode, expression);
                     } else {
-                        throw mode + ' is currently not supported within a tag.';
+                        throw new Error(mode + ' is currently not supported within a tag.');
                     }
                 } else {
                     makeRendererAndUpdateSection(section, mode, expression);

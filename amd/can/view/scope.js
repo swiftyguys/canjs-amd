@@ -1,20 +1,21 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#view/scope/scope*/
+/*can@2.2.9#view/scope/scope*/
 define([
     'can/util/library',
+    'can/view/compute_data',
     'can/construct',
     'can/map',
     'can/list',
     'can/view',
     'can/compute'
-], function (can) {
+], function (can, makeComputeData) {
     var escapeReg = /(\\)?\./g, escapeDotReg = /\\\./g, getNames = function (attr) {
             var names = [], last = 0;
             attr.replace(escapeReg, function (first, second, index) {
@@ -32,8 +33,8 @@ define([
                 this._parent = parent;
                 this.__cache = {};
             },
-            attr: function (key, value) {
-                var previousReads = can.__clearReading(), options = {
+            attr: can.__notObserve(function (key, value) {
+                var options = {
                         isArgument: true,
                         returnObserveMethods: true,
                         proxyMethods: false
@@ -45,9 +46,8 @@ define([
                     }
                     can.compute.set(obj, key, value, options);
                 }
-                can.__setReading(previousReads);
                 return res.value;
-            },
+            }),
             add: function (context) {
                 if (context !== this._context) {
                     return new this.constructor(context, this);
@@ -56,33 +56,7 @@ define([
                 }
             },
             computeData: function (key, options) {
-                options = options || { args: [] };
-                var self = this, rootObserve, rootReads, computeData = {
-                        compute: can.compute(function (newVal) {
-                            if (arguments.length) {
-                                if (rootObserve.isComputed) {
-                                    rootObserve(newVal);
-                                } else if (rootReads.length) {
-                                    var last = rootReads.length - 1;
-                                    var obj = rootReads.length ? can.compute.read(rootObserve, rootReads.slice(0, last)).value : rootObserve;
-                                    can.compute.set(obj, rootReads[last], newVal, options);
-                                }
-                            } else {
-                                if (rootObserve) {
-                                    return can.compute.read(rootObserve, rootReads, options).value;
-                                }
-                                var data = self.read(key, options);
-                                rootObserve = data.rootObserve;
-                                rootReads = data.reads;
-                                computeData.scope = data.scope;
-                                computeData.initialValue = data.value;
-                                computeData.reads = data.reads;
-                                computeData.root = rootObserve;
-                                return data.value;
-                            }
-                        })
-                    };
-                return computeData;
+                return makeComputeData(this, key, options);
             },
             compute: function (key, options) {
                 return this.computeData(key, options).compute;
@@ -99,22 +73,20 @@ define([
                 } else if (attr === '.' || attr === 'this') {
                     return { value: this._context };
                 }
-                var names = attr.indexOf('\\.') === -1 ? attr.split('.') : getNames(attr), context, scope = this, defaultObserve, defaultReads = [], defaultPropertyDepth = -1, defaultComputeReadings, defaultScope, currentObserve, currentReads;
+                var names = attr.indexOf('\\.') === -1 ? attr.split('.') : getNames(attr), context, scope = this, undefinedObserves = [], currentObserve, currentReads, setObserveDepth = -1, currentSetReads, currentSetObserve;
                 while (scope) {
                     context = scope._context;
-                    if (context !== null) {
+                    if (context !== null && (typeof context === 'object' || typeof context === 'function')) {
                         var data = can.compute.read(context, names, can.simpleExtend({
                                 foundObservable: function (observe, nameIndex) {
                                     currentObserve = observe;
                                     currentReads = names.slice(nameIndex);
                                 },
                                 earlyExit: function (parentValue, nameIndex) {
-                                    if (nameIndex > defaultPropertyDepth) {
-                                        defaultObserve = currentObserve;
-                                        defaultReads = currentReads;
-                                        defaultPropertyDepth = nameIndex;
-                                        defaultScope = scope;
-                                        defaultComputeReadings = can.__clearReading();
+                                    if (nameIndex > setObserveDepth) {
+                                        currentSetObserve = currentObserve;
+                                        currentSetReads = currentReads;
+                                        setObserveDepth = nameIndex;
                                     }
                                 },
                                 executeAnonymousFunctions: true
@@ -126,29 +98,27 @@ define([
                                 value: data.value,
                                 reads: currentReads
                             };
+                        } else {
+                            undefinedObserves.push(can.__clearObserved());
                         }
                     }
-                    can.__clearReading();
                     if (!stopLookup) {
                         scope = scope._parent;
                     } else {
                         scope = null;
                     }
                 }
-                if (defaultObserve) {
-                    can.__setReading(defaultComputeReadings);
-                    return {
-                        scope: defaultScope,
-                        rootObserve: defaultObserve,
-                        reads: defaultReads,
-                        value: undefined
-                    };
-                } else {
-                    return {
-                        names: names,
-                        value: undefined
-                    };
+                var len = undefinedObserves.length;
+                if (len) {
+                    for (var i = 0; i < len; i++) {
+                        can.__addObserved(undefinedObserves[i]);
+                    }
                 }
+                return {
+                    setRoot: currentSetObserve,
+                    reads: currentSetReads,
+                    value: undefined
+                };
             }
         });
     can.view.Scope = Scope;

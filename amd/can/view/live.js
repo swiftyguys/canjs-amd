@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#view/live/live*/
+/*can@2.2.9#view/live/live*/
 define([
     'can/util/library',
     'can/elements',
@@ -65,7 +65,7 @@ define([
         };
     var live = {
             list: function (el, compute, render, context, parentNode, nodeList) {
-                var masterNodeList = nodeList || [el], indexMap = [], afterPreviousEvents = false, add = function (ev, items, index) {
+                var masterNodeList = nodeList || [el], indexMap = [], afterPreviousEvents = false, isTornDown = false, add = function (ev, items, index) {
                         if (!afterPreviousEvents) {
                             return;
                         }
@@ -161,6 +161,9 @@ define([
                         }
                         remove({}, { length: masterNodeList.length - 1 }, 0, true, fullTeardown);
                     }, updateList = function (ev, newList, oldList) {
+                        if (isTornDown) {
+                            return;
+                        }
                         teardownList();
                         list = newList || [];
                         if (list.bind) {
@@ -189,7 +192,10 @@ define([
                 } else {
                     elements.replace(masterNodeList, text);
                     nodeLists.update(masterNodeList, [text]);
-                    nodeList.unregistered = data.teardownCheck;
+                    nodeList.unregistered = function () {
+                        data.teardownCheck();
+                        isTornDown = true;
+                    };
                 }
                 updateList({}, can.isFunction(compute) ? compute() : compute);
             },
@@ -293,7 +299,7 @@ define([
                 if (!hooks) {
                     can.data(wrapped, 'hooks', hooks = {});
                 }
-                var attr = elements.getAttr(el, attributeName), parts = attr.split(live.attributePlaceholder), goodParts = [], hook;
+                var attr = String(elements.getAttr(el, attributeName)), parts = attr.split(live.attributePlaceholder), goodParts = [], hook;
                 goodParts.push(parts.shift(), parts.join(live.attributePlaceholder));
                 if (hooks[attributeName]) {
                     hooks[attributeName].computes.push(compute);
@@ -328,6 +334,7 @@ define([
         };
     live.attr = live.simpleAttribute;
     live.attrs = live.attributes;
+    live.getAttributeParts = getAttributeParts;
     var newLine = /(\r|\n)+/g;
     var getValue = function (val) {
         var regexp = /^["'].*["']$/;

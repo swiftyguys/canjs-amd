@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#util/mootools/mootools*/
+/*can@2.2.9#util/mootools/mootools*/
 define([
     'can/util/can',
     'can/util/attr',
@@ -91,10 +91,6 @@ define([
     };
     can.isEmptyObject = function (object) {
         return Object.keys(object).length === 0;
-    };
-    can.proxy = function () {
-        var args = can.makeArray(arguments), func = args.shift();
-        return func.bind.apply(func, args);
     };
     can.isFunction = function (f) {
         return typeOf(f) === 'function';

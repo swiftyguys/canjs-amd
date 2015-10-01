@@ -1,20 +1,21 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#component/component*/
+/*can@2.2.9#component/component*/
 define([
     'can/util/library',
     'can/view/callbacks',
+    'can/elements',
     'can/control',
     'can/observe',
     'can/view/mustache',
     'can/view/bindings'
-], function (can, viewCallbacks) {
+], function (can, viewCallbacks, elements) {
     var ignoreAttributesRegExp = /^(dataViewId|class|id)$/i, paramReplacer = /\{([^\}]+)\}/g;
     var Component = can.Component = can.Construct.extend({
             setup: function () {
@@ -139,20 +140,9 @@ define([
                 });
                 this._control = new this.constructor.Control(el, {
                     scope: this.scope,
-                    viewModel: this.scope
+                    viewModel: this.scope,
+                    destroy: callTeardownFunctions
                 });
-                if (this._control && this._control.destroy) {
-                    var oldDestroy = this._control.destroy;
-                    this._control.destroy = function () {
-                        oldDestroy.apply(this, arguments);
-                        callTeardownFunctions();
-                    };
-                    this._control.on();
-                } else {
-                    can.bind.call(el, 'removed', function () {
-                        callTeardownFunctions();
-                    });
-                }
                 var nodeList = can.view.nodeLists.register([], undefined, true);
                 teardownFunctions.push(function () {
                     can.view.nodeLists.unregister(nodeList);
@@ -166,7 +156,12 @@ define([
                         if (subtemplate) {
                             delete options.tags.content;
                             var opts = !lexicalContent || subtemplate !== hookupOptions.subtemplate ? rendererOptions : hookupOptions;
-                            can.view.live.replace([el], subtemplate(opts.scope, opts.options));
+                            if (rendererOptions.parentNodeList) {
+                                var frag = subtemplate(opts.scope, opts.options, rendererOptions.parentNodeList);
+                                elements.replace([el], frag);
+                            } else {
+                                can.view.live.replace([el], subtemplate(opts.scope, opts.options));
+                            }
                             options.tags.content = contentHookup;
                         }
                     };
@@ -256,6 +251,12 @@ define([
                 }
                 can.Control.prototype.off.apply(this, arguments);
                 this._bindings.readyComputes = {};
+            },
+            destroy: function () {
+                can.Control.prototype.destroy.apply(this, arguments);
+                if (typeof this.options.destroy === 'function') {
+                    this.options.destroy.apply(this, arguments);
+                }
             }
         });
     var $ = can.$;

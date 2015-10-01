@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#util/zepto/zepto*/
+/*can@2.2.9#util/zepto/zepto*/
 define([
     'can/util/can',
     'can/util/attr',
@@ -144,11 +144,6 @@ define([
             ret[i] = a;
         });
         return ret;
-    };
-    can.proxy = function (f, ctx) {
-        return function () {
-            return f.apply(ctx, arguments);
-        };
     };
     var XHR = $.ajaxSettings.xhr;
     $.ajaxSettings.xhr = function () {

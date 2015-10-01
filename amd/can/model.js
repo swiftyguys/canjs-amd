@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.4
+ * CanJS - 2.2.9
  * http://canjs.com/
  * Copyright (c) 2015 Bitovi
- * Fri, 03 Apr 2015 23:27:46 GMT
+ * Fri, 11 Sep 2015 23:12:43 GMT
  * Licensed MIT
  */
 
-/*can@2.2.4#model/model*/
+/*can@2.2.9#model/model*/
 define([
     'can/util/library',
     'can/map',
@@ -35,7 +35,7 @@ define([
             }
             return d;
         }, modelNum = 0, getId = function (inst) {
-            can.__reading(inst, inst.constructor.id);
+            can.__observe(inst, inst.constructor.id);
             return inst.__get(inst.constructor.id);
         }, ajax = function (ajaxOb, data, type, dataType, success, error) {
             var params = {};
@@ -96,7 +96,7 @@ define([
                     instancesRawData = raw;
                     raw = raw.data;
                 }
-                if (typeof raw === 'undefined') {
+                if (typeof raw === 'undefined' || !can.isArray(raw)) {
                     throw new Error('Could not get any raw data while converting using .models');
                 }
                 if (modelList.length) {

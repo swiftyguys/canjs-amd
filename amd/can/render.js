@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#view/render*/
+/*can@2.3.21#view/render*/
 define([
     'can/view',
     'can/elements',
@@ -27,8 +27,8 @@ define([
                 return '';
             }
             var hook = input.hookup && function (el, id) {
-                    input.hookup.call(input, el, id);
-                } || typeof input === 'function' && input;
+                input.hookup.call(input, el, id);
+            } || typeof input === 'function' && input;
             if (hook) {
                 if (tag) {
                     return '<' + tag + ' ' + can.view.hook(hook) + '></' + tag + '>';
@@ -99,13 +99,14 @@ define([
             }
             var contentProp = elements.tagToContentPropMap[tagName];
             if (status === 0 && !contentProp) {
+                var selfClosing = !!elements.selfClosingTags[tag];
                 return '<' + tag + can.view.hook(escape && typeof value !== 'object' ? function (el, parentNode) {
                     live.text(el, compute, parentNode);
                     unbind();
                 } : function (el, parentNode) {
                     live.html(el, compute, parentNode);
                     unbind();
-                }) + '>' + tagChildren(tag) + '</' + tag + '>';
+                }) + (selfClosing ? '/>' : '>' + tagChildren(tag) + '</' + tag + '>');
             } else if (status === 1) {
                 pendingHookups.push(function (el) {
                     live.attributes(el, compute, compute());

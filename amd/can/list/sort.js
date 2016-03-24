@@ -1,16 +1,16 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#list/sort/sort*/
+/*can@2.3.21#list/sort/sort*/
 define([
     'can/util/library',
     'can/list'
-], function () {
+], function (can) {
     var oldBubbleRule = can.List._bubbleRule;
     can.List._bubbleRule = function (eventName, list) {
         var oldBubble = oldBubbleRule.apply(this, arguments);
@@ -19,12 +19,13 @@ define([
         }
         return oldBubble;
     };
-    var proto = can.List.prototype, _changes = proto._changes, setup = proto.setup, unbind = proto.unbind;
+    var proto = can.List.prototype, _changes = proto._changes || function () {
+        }, setup = proto.setup, unbind = proto.unbind;
     can.extend(proto, {
         setup: function (instances, options) {
             setup.apply(this, arguments);
+            this.bind('change', can.proxy(this._changes, this));
             this._comparatorBound = false;
-            this._init = 1;
             this.bind('comparator', can.proxy(this._comparatorUpdated, this));
             delete this._init;
             if (this.comparator) {
@@ -56,6 +57,9 @@ define([
             if (comparator && typeof comparator === 'function') {
                 return comparator(a, b);
             }
+            if (typeof a === 'string' && typeof b === 'string' && ''.localeCompare) {
+                return a.localeCompare(b);
+            }
             return a === b ? 0 : a < b ? -1 : 1;
         },
         _changes: function (ev, attr, how, newVal, oldVal) {
@@ -83,29 +87,34 @@ define([
             }
             _changes.apply(this, arguments);
         },
-        _getInsertIndex: function (item) {
-            var length = this.length;
-            var offset = 0;
+        _getInsertIndex: function (item, lowerBound, upperBound) {
+            var insertIndex = 0;
             var a = this._getComparatorValue(item);
-            var b, comparedItem;
-            for (var i = 0; i < length; i++) {
-                comparedItem = this[i];
+            var b, dir, comparedItem, testIndex;
+            lowerBound = typeof lowerBound === 'number' ? lowerBound : 0;
+            upperBound = typeof upperBound === 'number' ? upperBound : this.length - 1;
+            while (lowerBound <= upperBound) {
+                testIndex = (lowerBound + upperBound) / 2 | 0;
+                comparedItem = this[testIndex];
                 b = this._getComparatorValue(comparedItem);
-                if (item === comparedItem) {
-                    offset = -1;
-                    continue;
-                }
-                if (this._comparator(a, b) < 0) {
-                    return i + offset;
+                dir = this._comparator(a, b);
+                if (dir < 0) {
+                    upperBound = testIndex - 1;
+                } else if (dir >= 0) {
+                    lowerBound = testIndex + 1;
+                    insertIndex = lowerBound;
                 }
             }
-            return length + offset;
+            return insertIndex;
         },
         _getRelativeInsertIndex: function (item, currentIndex) {
             var naiveInsertIndex = this._getInsertIndex(item);
             var nextItemIndex = currentIndex + 1;
             var a = this._getComparatorValue(item);
             var b;
+            if (naiveInsertIndex >= currentIndex) {
+                naiveInsertIndex -= 1;
+            }
             if (currentIndex < naiveInsertIndex && nextItemIndex < this.length) {
                 b = this._getComparatorValue(this[nextItemIndex]);
                 if (this._comparator(a, b) === 0) {
@@ -114,8 +123,8 @@ define([
             }
             return naiveInsertIndex;
         },
-        _getComparatorValue: function (item, overwrittenComparator) {
-            var comparator = typeof overwrittenComparator === 'string' ? overwrittenComparator : this.comparator;
+        _getComparatorValue: function (item) {
+            var comparator = this.comparator;
             if (item && comparator && typeof comparator === 'string') {
                 item = typeof item[comparator] === 'function' ? item[comparator]() : item.attr(comparator);
             }
@@ -129,21 +138,28 @@ define([
             });
             return a;
         },
-        sort: function (comparator, silent) {
+        sort: function (comparator) {
+            if (arguments.length) {
+                this.attr('comparator', comparator);
+            } else {
+                this._sort();
+            }
+            return this;
+        },
+        _sort: function () {
             var a, b, c, isSorted;
-            var comparatorFn = can.isFunction(comparator) ? comparator : this._comparator;
             for (var i, iMin, j = 0, n = this.length; j < n - 1; j++) {
                 iMin = j;
                 isSorted = true;
                 c = undefined;
                 for (i = j + 1; i < n; i++) {
-                    a = this._getComparatorValue(this.attr(i), comparator);
-                    b = this._getComparatorValue(this.attr(iMin), comparator);
-                    if (comparatorFn.call(this, a, b) < 0) {
+                    a = this._getComparatorValue(this.attr(i));
+                    b = this._getComparatorValue(this.attr(iMin));
+                    if (this._comparator.call(this, a, b) < 0) {
                         isSorted = false;
                         iMin = i;
                     }
-                    if (c && comparatorFn.call(this, a, c) < 0) {
+                    if (c && this._comparator.call(this, a, c) < 0) {
                         isSorted = false;
                     }
                     c = a;
@@ -152,30 +168,23 @@ define([
                     break;
                 }
                 if (iMin !== j) {
-                    this._swapItems(iMin, j, silent);
+                    this._swapItems(iMin, j);
                 }
             }
-            if (!silent) {
-                can.batch.trigger(this, 'length', [this.length]);
-            }
+            can.batch.trigger(this, 'length', [this.length]);
             return this;
         },
-        _swapItems: function (oldIndex, newIndex, silent) {
+        _swapItems: function (oldIndex, newIndex) {
             var temporaryItemReference = this[oldIndex];
             [].splice.call(this, oldIndex, 1);
             [].splice.call(this, newIndex, 0, temporaryItemReference);
-            if (!silent) {
-                can.batch.trigger(this, 'move', [
-                    temporaryItemReference,
-                    newIndex,
-                    oldIndex
-                ]);
-            }
+            can.batch.trigger(this, 'move', [
+                temporaryItemReference,
+                newIndex,
+                oldIndex
+            ]);
         }
     });
-    var getArgs = function (args) {
-        return args[0] && can.isArray(args[0]) ? args[0] : can.makeArray(args);
-    };
     can.each({
         push: 'length',
         unshift: 0
@@ -183,17 +192,20 @@ define([
         var proto = can.List.prototype, old = proto[name];
         proto[name] = function () {
             if (this.comparator && arguments.length) {
-                var args = getArgs(arguments);
-                var i = args.length;
-                while (i--) {
-                    var val = can.bubble.set(this, i, this.__type(args[i], i));
-                    var newIndex = this._getInsertIndex(val);
+                var args = can.makeArray(arguments);
+                var length = args.length;
+                var i = 0;
+                var newIndex, val;
+                while (i < length) {
+                    val = can.bubble.set(this, i, this.__type(args[i], i));
+                    newIndex = this._getInsertIndex(val);
                     Array.prototype.splice.apply(this, [
                         newIndex,
                         0,
                         val
                     ]);
                     this._triggerChange('' + newIndex, 'add', [val], undefined);
+                    i++;
                 }
                 can.batch.trigger(this, 'reset', [args]);
                 return this;
@@ -206,16 +218,13 @@ define([
         var proto = can.List.prototype;
         var oldSplice = proto.splice;
         proto.splice = function (index, howMany) {
-            var args = can.makeArray(arguments), newElements = [], i, len;
+            var args = can.makeArray(arguments);
             if (!this.comparator) {
                 return oldSplice.apply(this, args);
             }
-            for (i = 2, len = args.length; i < len; i++) {
-                args[i] = this.__type(args[i], i);
-                newElements.push(args[i]);
-            }
             oldSplice.call(this, index, howMany);
-            proto.push.apply(this, newElements);
+            args.splice(0, 2);
+            proto.push.apply(this, args);
         };
     }());
     return can.Map;

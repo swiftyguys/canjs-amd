@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#util/domless/domless*/
+/*can@2.3.21#util/domless/domless*/
 define([
     'can/util/can',
     'can/util/attr',
@@ -22,7 +22,10 @@ define([
         return array.length > 0 ? Array.prototype.concat.apply([], array) : array;
     }
     can.isArray = function (arr) {
-        return arr instanceof Array;
+        if (Array.isArray) {
+            return Array.isArray(arr);
+        }
+        return Object.prototype.toString.call(arr) === '[object Array]';
     };
     can.isFunction = function () {
         if (typeof document !== 'undefined' && typeof document.getElementsByTagName('body') === 'function') {

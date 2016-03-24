@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#view/stache/stache*/
+/*can@2.3.21#view/stache/stache*/
 define([
     'can/util/library',
     'can/view/parser',
@@ -20,11 +20,15 @@ define([
     'can/view/bindings'
 ], function (can, parser, target, HTMLSectionBuilder, TextSectionBuilder, mustacheCore, mustacheHelpers, getIntermediateAndImports, viewCallbacks) {
     parser = parser || can.view.parser;
+    can.view.parser = parser;
     viewCallbacks = viewCallbacks || can.view.callbacks;
     var svgNamespace = 'http://www.w3.org/2000/svg';
     var namespaces = {
             'svg': svgNamespace,
             'g': svgNamespace
+        }, textContentOnlyTag = {
+            style: true,
+            script: true
         };
     function stache(template) {
         if (typeof template === 'string') {
@@ -35,10 +39,11 @@ define([
                 attr: null,
                 sectionElementStack: [],
                 text: false,
-                namespaceStack: []
+                namespaceStack: [],
+                textContentOnly: null
             }, makeRendererAndUpdateSection = function (section, mode, stache) {
                 if (mode === '>') {
-                    section.add(mustacheCore.makeLiveBindingPartialRenderer(stache, state));
+                    section.add(mustacheCore.makeLiveBindingPartialRenderer(stache, copyState()));
                 } else if (mode === '/') {
                     section.endSection();
                     if (section instanceof HTMLSectionBuilder) {
@@ -62,16 +67,17 @@ define([
             }, copyState = function (overwrites) {
                 var lastElement = state.sectionElementStack[state.sectionElementStack.length - 1];
                 var cur = {
-                        tag: state.node && state.node.tag,
-                        attr: state.attr && state.attr.name,
-                        directlyNested: state.sectionElementStack.length ? lastElement === 'section' || lastElement === 'custom' : true
-                    };
+                    tag: state.node && state.node.tag,
+                    attr: state.attr && state.attr.name,
+                    directlyNested: state.sectionElementStack.length ? lastElement === 'section' || lastElement === 'custom' : true,
+                    textContentOnly: !!state.textContentOnly
+                };
                 return overwrites ? can.simpleExtend(cur, overwrites) : cur;
             }, addAttributesCallback = function (node, callback) {
                 if (!node.attributes) {
                     node.attributes = [];
                 }
-                node.attributes.push(callback);
+                node.attributes.unshift(callback);
             };
         parser(template, {
             start: function (tagName, unary) {
@@ -102,9 +108,11 @@ define([
                     }
                 } else {
                     section.push(state.node);
-                    state.sectionElementStack.push(isCustomTag ? 'custom' : 'element');
+                    state.sectionElementStack.push(isCustomTag ? 'custom' : tagName);
                     if (isCustomTag) {
                         section.startSubSection();
+                    } else if (textContentOnlyTag[tagName]) {
+                        state.textContentOnly = new TextSectionBuilder();
                     }
                 }
                 state.node = null;
@@ -117,6 +125,10 @@ define([
                 var isCustomTag = viewCallbacks.tag(tagName), renderer;
                 if (isCustomTag) {
                     renderer = section.endSubSectionAndReturnRenderer();
+                }
+                if (textContentOnlyTag[tagName]) {
+                    section.last().add(state.textContentOnly.compile(copyState()));
+                    state.textContentOnly = null;
                 }
                 var oldNode = section.pop();
                 if (isCustomTag) {
@@ -155,11 +167,12 @@ define([
                         if (!state.node.attributes) {
                             state.node.attributes = [];
                         }
-                        state.node.attributes.push(function (scope, options) {
+                        state.node.attributes.push(function (scope, options, nodeList) {
                             attrCallback(this, {
                                 attributeName: attrName,
                                 scope: scope,
-                                options: options
+                                options: options,
+                                nodeList: nodeList
                             });
                         });
                     }
@@ -175,12 +188,20 @@ define([
                 }
             },
             chars: function (text) {
-                section.add(text);
+                (state.textContentOnly || section).add(text);
             },
             special: function (text) {
                 var firstAndText = mustacheCore.splitModeFromExpression(text, state), mode = firstAndText.mode, expression = firstAndText.expression;
                 if (expression === 'else') {
-                    (state.attr && state.attr.section ? state.attr.section : section).inverse();
+                    var inverseSection;
+                    if (state.attr && state.attr.section) {
+                        inverseSection = state.attr.section;
+                    } else if (state.node && state.node.section) {
+                        inverseSection = state.node.section;
+                    } else {
+                        inverseSection = state.textContentOnly || section;
+                    }
+                    inverseSection.inverse();
                     return;
                 }
                 if (mode === '!') {
@@ -215,7 +236,7 @@ define([
                         throw new Error(mode + ' is currently not supported within a tag.');
                     }
                 } else {
-                    makeRendererAndUpdateSection(section, mode, expression);
+                    makeRendererAndUpdateSection(state.textContentOnly || section, mode, expression);
                 }
             },
             comment: function (text) {
@@ -227,11 +248,11 @@ define([
         return section.compile();
     }
     var escMap = {
-            '\n': '\\n',
-            '\r': '\\r',
-            '\u2028': '\\u2028',
-            '\u2029': '\\u2029'
-        };
+        '\n': '\\n',
+        '\r': '\\r',
+        '\u2028': '\\u2028',
+        '\u2029': '\\u2029'
+    };
     var esc = function (string) {
         return ('' + string).replace(/["'\\\n\r\u2028\u2029]/g, function (character) {
             if ('\'"\\'.indexOf(character) >= 0) {
@@ -264,8 +285,8 @@ define([
     can.stache.async = function (source) {
         var iAi = getIntermediateAndImports(source);
         var importPromises = can.map(iAi.imports, function (moduleName) {
-                return can['import'](moduleName);
-            });
+            return can['import'](moduleName);
+        });
         return can.when.apply(can, importPromises).then(function () {
             return stache(iAi.intermediate);
         });

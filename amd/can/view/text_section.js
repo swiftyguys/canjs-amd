@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#view/stache/text_section*/
+/*can@2.3.21#view/stache/text_section*/
 define([
     'can/util/library',
     'can/view/live',
@@ -15,9 +15,8 @@ define([
 ], function (can, live, utils, liveStache) {
     live = live || can.view.live;
     var TextSectionBuilder = function () {
-            this.stack = [new TextSection()];
-        }, emptyHandler = function () {
-        };
+        this.stack = [new TextSection()];
+    };
     can.extend(TextSectionBuilder.prototype, utils.mixins);
     can.extend(TextSectionBuilder.prototype, {
         startSection: function (process) {
@@ -41,19 +40,23 @@ define([
             var renderer = this.stack[0].compile();
             return function (scope, options) {
                 var compute = can.compute(function () {
-                        return renderer(scope, options);
-                    }, this, false, true);
-                compute.bind('change', emptyHandler);
+                    return renderer(scope, options);
+                }, null, false);
+                compute.computeInstance.bind('change', can.k);
                 var value = compute();
                 if (compute.computeInstance.hasDependencies) {
-                    if (state.attr) {
+                    if (state.textContentOnly) {
+                        live.text(this, compute);
+                    } else if (state.attr) {
                         live.simpleAttribute(this, state.attr, compute);
                     } else {
                         liveStache.attributes(this, compute, scope, options);
                     }
-                    compute.unbind('change', emptyHandler);
+                    compute.computeInstance.unbind('change', can.k);
                 } else {
-                    if (state.attr) {
+                    if (state.textContentOnly) {
+                        this.nodeValue = value;
+                    } else if (state.attr) {
                         can.attr.set(this, state.attr, value);
                     } else {
                         live.setAttributes(this, value);

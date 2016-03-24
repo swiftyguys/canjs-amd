@@ -1,12 +1,12 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#util/fixture/fixture*/
+/*can@2.3.21#util/fixture/fixture*/
 define([
     'can/util/library',
     'can/util/string',
@@ -199,33 +199,33 @@ define([
             return id;
         };
     var $fixture = can.fixture = function (settings, fixture) {
-            if (fixture !== undefined) {
-                if (typeof settings === 'string') {
-                    var matches = settings.match(/(GET|POST|PUT|DELETE) (.+)/i);
-                    if (!matches) {
-                        settings = { url: settings };
-                    } else {
-                        settings = {
-                            url: matches[2],
-                            type: matches[1]
-                        };
-                    }
+        if (fixture !== undefined) {
+            if (typeof settings === 'string') {
+                var matches = settings.match(/(GET|POST|PUT|DELETE) (.+)/i);
+                if (!matches) {
+                    settings = { url: settings };
+                } else {
+                    settings = {
+                        url: matches[2],
+                        type: matches[1]
+                    };
                 }
-                var index = find(settings, !!fixture);
-                if (index > -1) {
-                    overwrites.splice(index, 1);
-                }
-                if (fixture == null) {
-                    return;
-                }
-                settings.fixture = fixture;
-                overwrites.push(settings);
-            } else {
-                can.each(settings, function (fixture, url) {
-                    $fixture(url, fixture);
-                });
             }
-        };
+            var index = find(settings, !!fixture);
+            if (index > -1) {
+                overwrites.splice(index, 1);
+            }
+            if (fixture == null) {
+                return;
+            }
+            settings.fixture = fixture;
+            overwrites.push(settings);
+        } else {
+            can.each(settings, function (fixture, url) {
+                $fixture(url, fixture);
+            });
+        }
+    };
     var replacer = can.replacer;
     can.extend(can.fixture, {
         _similar: function (settings, overwrite, exact) {

@@ -1,21 +1,20 @@
 /*!
- * CanJS - 2.2.9
+ * CanJS - 2.3.21
  * http://canjs.com/
- * Copyright (c) 2015 Bitovi
- * Fri, 11 Sep 2015 23:12:43 GMT
+ * Copyright (c) 2016 Bitovi
+ * Sat, 19 Mar 2016 01:24:17 GMT
  * Licensed MIT
  */
 
-/*can@2.2.9#util/array/each*/
-define(['can/util/can'], function (can) {
-    var isArrayLike = function (obj) {
-        var length = 'length' in obj && obj.length;
-        return typeof arr !== 'function' && (length === 0 || typeof length === 'number' && length > 0 && length - 1 in obj);
-    };
+/*can@2.3.21#util/array/each*/
+define([
+    'can/util/can',
+    'can/util/isArrayLike'
+], function (can) {
     can.each = function (elements, callback, context) {
         var i = 0, key, len, item;
         if (elements) {
-            if (isArrayLike(elements)) {
+            if (can.isArrayLike(elements)) {
                 if (can.List && elements instanceof can.List) {
                     for (len = elements.attr('length'); i < len; i++) {
                         item = elements.attr(i);
@@ -43,7 +42,7 @@ define(['can/util/can'], function (can) {
                     }
                 } else {
                     for (key in elements) {
-                        if (elements.hasOwnProperty(key) && callback.call(context || elements[key], elements[key], key, elements) === false) {
+                        if (Object.prototype.hasOwnProperty.call(elements, key) && callback.call(context || elements[key], elements[key], key, elements) === false) {
                             break;
                         }
                     }
